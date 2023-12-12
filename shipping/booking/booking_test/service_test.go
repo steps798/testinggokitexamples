@@ -1,294 +1,212 @@
-package booking
+package booking_test
 
 import (
-	"reflect"
+	"errors"
 	"testing"
-	"time"
 
+	"github.com/go-kit/examples/shipping/booking"
 	"github.com/go-kit/examples/shipping/cargo"
-	"github.com/go-kit/examples/shipping/location"
-	"github.com/go-kit/examples/shipping/routing"
+	mock_cargo "github.com/go-kit/examples/shipping/cargo/mock"
+	mock_location "github.com/go-kit/examples/shipping/location/mock"
+	mock_routing "github.com/go-kit/examples/shipping/routing/mock"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestNewService(t *testing.T) {
-	type args struct {
-		cargos    cargo.Repository
-		locations location.Repository
-		events    cargo.HandlingEventRepository
-		rs        routing.Service
-	}
-	tests := []struct {
-		name string
-		args args
-		want Service
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewService(tt.args.cargos, tt.args.locations, tt.args.events, tt.args.rs); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewService() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_assemble(t *testing.T) {
-	type args struct {
-		c      *cargo.Cargo
-		events cargo.HandlingEventRepository
-	}
-	tests := []struct {
-		name string
-		args args
-		want Cargo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := assemble(tt.args.c, tt.args.events); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("assemble() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_service_AssignCargoToRoute(t *testing.T) {
-	type fields struct {
-		cargos         cargo.Repository
-		locations      location.Repository
-		handlingEvents cargo.HandlingEventRepository
-		routingService routing.Service
+
+	type cargosFind struct {
+		argId  cargo.TrackingID
+		output *cargo.Cargo
+		err    error
+	}
+	type cargosStore struct {
+		argCargo *cargo.Cargo
+		err      error
+	}
+	type mockScenario struct {
+		cargosFind  *cargosFind
+		cargosStore *cargosStore
 	}
 	type args struct {
 		id        cargo.TrackingID
 		itinerary cargo.Itinerary
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name         string
+		args         args
+		mockScenario mockScenario
+		expectedErr  error
 	}{
-		// TODO: Add test cases.
+		{
+			name: "empty id returns expected error",
+			args: args{
+				id: "",
+				itinerary: cargo.Itinerary{
+					Legs: []cargo.Leg{
+						{},
+					},
+				},
+			},
+			mockScenario: mockScenario{},
+			expectedErr:  booking.ErrInvalidArgument,
+		},
+		{
+			name: "empty itinerary legs returns expected error",
+			args: args{
+				id:        "id",
+				itinerary: cargo.Itinerary{},
+			},
+			mockScenario: mockScenario{},
+			expectedErr:  booking.ErrInvalidArgument,
+		},
+		{
+			name: "failed to find cargo returns expected error",
+			args: args{
+				id: "id",
+				itinerary: cargo.Itinerary{
+					Legs: []cargo.Leg{
+						{},
+					},
+				},
+			},
+			mockScenario: mockScenario{
+				cargosFind: &cargosFind{
+					argId:  "id",
+					output: nil,
+					err:    errors.New("unexpected error"),
+				},
+			},
+			expectedErr: errors.New("unexpected error"),
+		},
+		{
+			name: "failed to store cargo returns expected error",
+			args: args{
+				id: "id",
+				itinerary: cargo.Itinerary{
+					Legs: []cargo.Leg{
+						{},
+					},
+				},
+			},
+			mockScenario: mockScenario{
+				cargosFind: &cargosFind{
+					argId:  "id",
+					output: &cargo.Cargo{},
+					err:    nil,
+				},
+				cargosStore: &cargosStore{
+					argCargo: &cargo.Cargo{
+						TrackingID:         "",
+						Origin:             "",
+						RouteSpecification: cargo.RouteSpecification{},
+						Itinerary: cargo.Itinerary{
+							Legs: []cargo.Leg{
+								{},
+							},
+						},
+						Delivery: cargo.Delivery{
+							Itinerary: cargo.Itinerary{
+								Legs: []cargo.Leg{
+									{},
+								},
+							},
+							RoutingStatus:   cargo.Routed,
+							TransportStatus: cargo.NotReceived,
+							NextExpectedActivity: cargo.HandlingActivity{
+								Type: cargo.Receive,
+							},
+						},
+					},
+					err: errors.New("unexpected error"),
+				},
+			},
+			expectedErr: errors.New("unexpected error"),
+		},
+		{
+			name: "successfully assign cargo to route",
+			args: args{
+				id: "id",
+				itinerary: cargo.Itinerary{
+					Legs: []cargo.Leg{
+						{},
+					},
+				},
+			},
+			mockScenario: mockScenario{
+				cargosFind: &cargosFind{
+					argId:  "id",
+					output: &cargo.Cargo{},
+					err:    nil,
+				},
+				cargosStore: &cargosStore{
+					argCargo: &cargo.Cargo{
+						TrackingID:         "",
+						Origin:             "",
+						RouteSpecification: cargo.RouteSpecification{},
+						Itinerary: cargo.Itinerary{
+							Legs: []cargo.Leg{
+								{},
+							},
+						},
+						Delivery: cargo.Delivery{
+							Itinerary: cargo.Itinerary{
+								Legs: []cargo.Leg{
+									{},
+								},
+							},
+							RoutingStatus:   cargo.Routed,
+							TransportStatus: cargo.NotReceived,
+							NextExpectedActivity: cargo.HandlingActivity{
+								Type: cargo.Receive,
+							},
+						},
+					},
+					err: nil,
+				},
+			},
+			expectedErr: nil,
+		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &service{
-				cargos:         tt.fields.cargos,
-				locations:      tt.fields.locations,
-				handlingEvents: tt.fields.handlingEvents,
-				routingService: tt.fields.routingService,
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mockCtr := gomock.NewController(t)
+			mockCargos := mock_cargo.NewMockRepository(mockCtr)
+			mockLocations := mock_location.NewMockRepository(mockCtr)
+			mockHandlingEvents := mock_cargo.NewMockHandlingEventRepository(mockCtr)
+			mockRoutingService := mock_routing.NewMockService(mockCtr)
+
+			s := booking.NewService(
+				mockCargos,
+				mockLocations,
+				mockHandlingEvents,
+				mockRoutingService,
+			)
+
+			if test.mockScenario.cargosFind != nil {
+				mockCargos.EXPECT().
+					Find(test.mockScenario.cargosFind.argId).
+					Return(test.mockScenario.cargosFind.output, test.mockScenario.cargosFind.err)
 			}
-			if err := s.AssignCargoToRoute(tt.args.id, tt.args.itinerary); (err != nil) != tt.wantErr {
-				t.Errorf("AssignCargoToRoute() error = %v, wantErr %v", err, tt.wantErr)
+			if test.mockScenario.cargosStore != nil {
+				mockCargos.EXPECT().
+					Store(test.mockScenario.cargosStore.argCargo).
+					Return(test.mockScenario.cargosStore.err)
+			}
+
+			err := s.AssignCargoToRoute(test.args.id, test.args.itinerary)
+			if test.expectedErr != nil {
+				assert.Equal(t, test.expectedErr.Error(), err.Error())
+			} else {
+				assert.Nil(t, err)
 			}
 		})
 	}
 }
 
-func Test_service_BookNewCargo(t *testing.T) {
-	type fields struct {
-		cargos         cargo.Repository
-		locations      location.Repository
-		handlingEvents cargo.HandlingEventRepository
-		routingService routing.Service
-	}
-	type args struct {
-		origin      location.UNLocode
-		destination location.UNLocode
-		deadline    time.Time
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    cargo.TrackingID
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &service{
-				cargos:         tt.fields.cargos,
-				locations:      tt.fields.locations,
-				handlingEvents: tt.fields.handlingEvents,
-				routingService: tt.fields.routingService,
-			}
-			got, err := s.BookNewCargo(tt.args.origin, tt.args.destination, tt.args.deadline)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("BookNewCargo() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("BookNewCargo() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_service_Cargos(t *testing.T) {
-	type fields struct {
-		cargos         cargo.Repository
-		locations      location.Repository
-		handlingEvents cargo.HandlingEventRepository
-		routingService routing.Service
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   []Cargo
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &service{
-				cargos:         tt.fields.cargos,
-				locations:      tt.fields.locations,
-				handlingEvents: tt.fields.handlingEvents,
-				routingService: tt.fields.routingService,
-			}
-			if got := s.Cargos(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Cargos() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_service_ChangeDestination(t *testing.T) {
-	type fields struct {
-		cargos         cargo.Repository
-		locations      location.Repository
-		handlingEvents cargo.HandlingEventRepository
-		routingService routing.Service
-	}
-	type args struct {
-		id          cargo.TrackingID
-		destination location.UNLocode
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &service{
-				cargos:         tt.fields.cargos,
-				locations:      tt.fields.locations,
-				handlingEvents: tt.fields.handlingEvents,
-				routingService: tt.fields.routingService,
-			}
-			if err := s.ChangeDestination(tt.args.id, tt.args.destination); (err != nil) != tt.wantErr {
-				t.Errorf("ChangeDestination() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func Test_service_LoadCargo(t *testing.T) {
-	type fields struct {
-		cargos         cargo.Repository
-		locations      location.Repository
-		handlingEvents cargo.HandlingEventRepository
-		routingService routing.Service
-	}
-	type args struct {
-		id cargo.TrackingID
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    Cargo
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &service{
-				cargos:         tt.fields.cargos,
-				locations:      tt.fields.locations,
-				handlingEvents: tt.fields.handlingEvents,
-				routingService: tt.fields.routingService,
-			}
-			got, err := s.LoadCargo(tt.args.id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("LoadCargo() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("LoadCargo() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_service_Locations(t *testing.T) {
-	type fields struct {
-		cargos         cargo.Repository
-		locations      location.Repository
-		handlingEvents cargo.HandlingEventRepository
-		routingService routing.Service
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   []Location
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &service{
-				cargos:         tt.fields.cargos,
-				locations:      tt.fields.locations,
-				handlingEvents: tt.fields.handlingEvents,
-				routingService: tt.fields.routingService,
-			}
-			if got := s.Locations(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Locations() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_service_RequestPossibleRoutesForCargo(t *testing.T) {
-	type fields struct {
-		cargos         cargo.Repository
-		locations      location.Repository
-		handlingEvents cargo.HandlingEventRepository
-		routingService routing.Service
-	}
-	type args struct {
-		id cargo.TrackingID
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   []cargo.Itinerary
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &service{
-				cargos:         tt.fields.cargos,
-				locations:      tt.fields.locations,
-				handlingEvents: tt.fields.handlingEvents,
-				routingService: tt.fields.routingService,
-			}
-			if got := s.RequestPossibleRoutesForCargo(tt.args.id); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("RequestPossibleRoutesForCargo() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+// TODO: Test_service_BookNewCargo
+// TODO: Test_service_Cargos
+// TODO: Test_service_ChangeDestination
+// TODO: Test_service_LoadCargo
+// TODO: Test_service_Locations
+// TODO: Test_service_RequestPossibleRoutesForCargo
