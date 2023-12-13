@@ -15,6 +15,10 @@ import (
 
 func Test_service_AssignCargoToRoute(t *testing.T) {
 
+	if testing.Short() {
+		t.Skip("skipping possibly time-consuming test in short mode.")
+	}
+
 	type cargosFind struct {
 		argId  cargo.TrackingID
 		output *cargo.Cargo
