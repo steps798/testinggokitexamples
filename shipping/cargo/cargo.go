@@ -70,6 +70,10 @@ func NextTrackingID() TrackingID {
 	return TrackingID(strings.Split(strings.ToUpper(uuid.New()), "-")[0])
 }
 
+func NextTrackingIDV2() TrackingID {
+	return TrackingID(strings.ToUpper(strings.Split(uuid.New(), "-")[0]))
+}
+
 // RouteSpecification Contains information about a route: its origin,
 // destination and arrival deadline.
 type RouteSpecification struct {
