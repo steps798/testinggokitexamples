@@ -17,6 +17,6 @@ $ go test -coverpkg=./shipping/... -coverprofile=coverage.out ./shipping/...
 $ go tool cover -html=coverage.out
 ```
 
-Check out the [slides](https://docs.google.com/presentation/d/18CpOTEFtP1vYlu0Bv-6WuSY2-thC4oDe5rPn_O4vDdY/edit?usp=sharing) 
-to learn and explore testing in Go! 
+Check out the [slides](https://docs.google.com/presentation/d/1Cb4q3QSttCd0oagmPGvXosqOJXFw_YFClpCVDTP2gD4/edit?usp=sharing) 
+to learn and explore good unit testing in Go! 
 
